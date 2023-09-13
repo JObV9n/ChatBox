@@ -1,0 +1,7 @@
+*/*.editorconfig
+*/*.env
+
+/laravel/composer.json
+/laravel/vite.config.js
+*/*.md
+

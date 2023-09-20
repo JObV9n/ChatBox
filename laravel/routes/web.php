@@ -1,7 +1,8 @@
 <?php
 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\HomeController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -25,7 +26,8 @@ Route::group(['middleware' => 'auth'], function () {
         return "Chat History";
     });
 });
+Route::get('/chatroom', [HomeController::class, 'showUsers'])->name('users');
+Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-//Auth::routes();
+Auth::routes();
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');

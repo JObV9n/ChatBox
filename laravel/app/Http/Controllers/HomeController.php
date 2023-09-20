@@ -2,8 +2,9 @@
 
 namespace app\Http\Controllers;
 
-use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Http\Request;
+use Illuminate\Contracts\Support\Renderable;
+use Illuminate\Routing\Controller;
 
 class HomeController extends Controller
 {
@@ -27,7 +28,9 @@ class HomeController extends Controller
         return view('home');
     }
 
-    public function showUsers() :Renderable {
+    public function showUsers() : Renderable
+    {
         return view('users');
+//        return "Hello";
     }
 }

@@ -30,7 +30,7 @@ class HomeController extends Controller
 
     public function showUsers() : Renderable
     {
-        return view('users');
+        return view('chats');
 //        return "Hello";
     }
 }

@@ -38,3 +38,64 @@
     border: none;
     border-radius: 5px;
 }
+/*User chat*/
+.chatListHeader {
+    background: white;
+    height: 6rem;
+    padding: 0 2rem;;
+}
+
+.chatTitle {
+    margin: 0;
+    line-height: 6rem;
+    font-size: 2rem;
+    font-weight: 400;
+}
+
+.chats {
+    height: calc(100% - 12rem);
+    overflow: auto;
+}
+
+.chatUser {
+    display: flex;
+    padding: 1.2rem 2rem;
+    cursor: pointer;
+}
+
+.chatUser ~ .chatUser{
+    border-top: 1px solid #eee;
+}
+
+.chatUser--active {
+    background: #eee !important;
+}
+
+.chatUser:hover {
+    background: #f4f4f4;
+}
+
+.chatUserIcon {
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+    background: #303F9F;
+    color: white;
+    overflow: hidden;
+    text-align: center;
+    line-height: 4.5rem;
+}
+
+.chatUserIcon img{
+    display: block;
+    width: 100%;
+}
+
+.chatUserDetails {
+    position: relative;
+    flex-grow: 1;
+    padding-left: 2rem;
+}
+.chatUsername {
+    line-height: 4.5rem;
+}

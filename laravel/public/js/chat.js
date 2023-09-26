@@ -1,22 +1,23 @@
-
 const messageInput = document.getElementById('message-input');
 const chatBox = document.getElementById('chat-box');
-const sendButton= document.getElementById('send-button');
+const sendButton = document.getElementById('send-button');
 
-sendButton.addEventListener('click', function() {
-        const messageText = messageInput.value.trim();
-        if (messageText !== '') {
-            appendMessage('sent', messageText);
-            // messageInput.value = '';
-            saveToLocalStorage('sent',messageText);
-        }
-});
-
-messageInput.addEventListener('keypress',(event)=>{
-    if (event.key === 'Enter'){ //if Enter is also pressed the message is send in the Div
-        sendButton.click();
+sendButton.addEventListener('click', function () {
+    const messageText = messageInput.value.trim();
+    if (messageText !== '') {
+        appendMessage('sent', messageText);
+        // messageInput.value = '';
+        saveToLocalStorage('sent', messageText);
     }
 });
+
+messageInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') { //if Enter is also pressed the message is send in the Div
+        sendButton.click();
+        messageInput.value= '';
+    }
+});
+
 function appendMessage(type, text) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', type);
@@ -26,13 +27,13 @@ function appendMessage(type, text) {
 }
 
 //function to save the  message in local storage
-function saveToLocalStorage(){
-    let type='sent';
-    let text=JSON.stringify(messageInput.value.trim());
+function saveToLocalStorage() {
+    let type = 'sent';
+    let text = JSON.stringify(messageInput.value.trim());
     let finalText = JSON.parse(text);
     const messageLocal = JSON.parse(localStorage.getItem('local')) || [];
-    messageLocal.push({ type,finalText });
-    localStorage.setItem('local',JSON.stringify(messageLocal));
+    messageLocal.push({type, finalText});
+    localStorage.setItem('local', JSON.stringify(messageLocal));
 }
 
 
@@ -45,4 +46,4 @@ function loadFromLocalStorage() {
 }
 
 //EventListener to listen when the window is reloaded or refreshed
-window.addEventListener('load',loadFromLocalStorage);
+window.addEventListener('load', loadFromLocalStorage);

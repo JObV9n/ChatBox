@@ -6,3 +6,8 @@
 
 // Bootstrap
 @import 'bootstrap/scss/bootstrap';
+.navbar-nav {
+    a {
+        padding-right: 13px;
+    }
+}

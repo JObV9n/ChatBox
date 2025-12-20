@@ -2,7 +2,6 @@
 
 return [
     'prism_server' => [
-        // The middleware that will be applied to the Prism Server routes.
         'middleware' => [],
         'enabled' => env('PRISM_SERVER_ENABLED', true),
     ],

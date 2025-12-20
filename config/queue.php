@@ -72,6 +72,11 @@ return [
             'after_commit' => false,
         ],
 
+        'zmq' => [
+            'publisher_endpoint' => env('ZMQ_PUBLISHER_ENDPOINT', 'tcp://127.0.0.1:5555'),
+            'subscriber_endpoint' => env('ZMQ_SUBSCRIBER_ENDPOINT', 'tcp://127.0.0.1:5555'),
+        ],
+
     ],
 
     /*

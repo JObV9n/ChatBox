@@ -9,11 +9,6 @@ use EchoLabs\Prism\Enums\Provider;
 
 class Chat extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'chat';
 
     /**
@@ -38,11 +33,11 @@ class Chat extends Command
         }
 
 //        echo $prismOutput . PHP_EOL;
-        dd($prismOutput);
+        // dd($prismOutput);
     }
 
 
-//    returns a generated Text from the OPEN Ai
+//    returns a generated Text from the OPENAI
     protected function generatedText(){
 
         $response = Prism::text()

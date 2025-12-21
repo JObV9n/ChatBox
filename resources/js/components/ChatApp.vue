@@ -1,7 +1,32 @@
 <template>
     <div class="chat-app min-h-screen bg-gray-100">
+        <!-- Top Navbar -->
+        <div class="bg-white shadow-md border-b">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-2xl font-bold text-blue-600">ChatBox</h1>
+                    <span class="text-sm text-gray-500">Anonymous Chat</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="text-sm">
+                        <span class="text-gray-600">User:</span>
+                        <strong class="text-blue-600">{{ username || 'Anonymous' }}</strong>
+                    </div>
+                    <div class="text-sm border-l pl-4">
+                        <span class="text-gray-600">IP:</span>
+                        <strong class="text-gray-800">{{ userIp || 'Loading...' }}</strong>
+                    </div>
+                    <div v-if="deviceInfo" class="text-sm border-l pl-4">
+                        <span class="text-gray-600">Device:</span>
+                        <strong class="text-gray-800">{{ deviceInfo.type }}</strong>
+                        <span class="text-gray-500 ml-1">({{ deviceInfo.browser }})</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         <div class="container mx-auto p-4">
-            <div class="grid grid-cols-12 gap-4 h-[calc(100vh-2rem)]">
+            <div class="grid grid-cols-12 gap-4 h-[calc(100vh-8rem)]">
                 <!-- Sidebar - Chat Rooms List -->
                 <div class="col-span-3 bg-white rounded-lg shadow-lg p-4 overflow-y-auto">
                     <div class="mb-4">
@@ -45,24 +70,13 @@
                                 <div>
                                     <h3 class="text-xl font-bold">{{ currentRoom.name }}</h3>
                                     <p class="text-sm text-gray-500">
-                                        Created by {{ currentRoom.creator?.name }}
+                                        {{ currentRoom.users_count }} users online
                                     </p>
                                 </div>
                                 <div class="flex gap-2">
-                                    <button 
-                                        v-if="!isMember"
-                                        @click="joinRoom"
-                                        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                                    >
-                                        Join Room
-                                    </button>
-                                    <button 
-                                        v-else
-                                        @click="leaveRoom"
-                                        class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                                    >
-                                        Leave Room
-                                    </button>
+                                    <span class="text-sm text-gray-600 px-4 py-2 bg-gray-100 rounded">
+                                        Chatting as: <strong>{{ username }}</strong>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -77,19 +91,19 @@
                                 :key="message.id"
                                 :class="[
                                     'flex',
-                                    message.user_id === currentUserId ? 'justify-end' : 'justify-start'
+                                    message.username === username ? 'justify-end' : 'justify-start'
                                 ]"
                             >
                                 <div 
                                     :class="[
                                         'max-w-md px-4 py-2 rounded-lg',
-                                        message.user_id === currentUserId
+                                        message.username === username
                                             ? 'bg-blue-500 text-white'
                                             : 'bg-gray-200'
                                     ]"
                                 >
                                     <div class="text-xs opacity-75 mb-1">
-                                        {{ message.user?.name }} · {{ formatTime(message.created_at) }}
+                                        {{ message.username }} · {{ formatTime(message.created_at) }}
                                     </div>
                                     <div>{{ message.content }}</div>
                                 </div>
@@ -97,7 +111,7 @@
                         </div>
 
                         <!-- Message Input -->
-                        <div v-if="isMember" class="border-t p-4">
+                        <div class="border-t p-4">
                             <form @submit.prevent="sendMessage" class="flex gap-2">
                                 <input 
                                     v-model="newMessage"
@@ -188,34 +202,52 @@ export default {
             showCreateRoom: false,
             newRoomName: '',
             newRoomPrivate: false,
-            currentUserId: null,
-            pollInterval: null,
-            lastMessageId: null,
+            username: '',
+            showUsernamePrompt: true,
+            eventSource: null,
+            userIp: '',
+            deviceInfo: null,
         };
-    },
-
-    computed: {
-        isMember() {
-            return this.messages.length > 0 || this.currentRoom?.hasMember;
-        }
     },
 
     mounted() {
         this.loadChatRooms();
-        this.getCurrentUser();
+        this.promptForUsername();
+        this.fetchUserIp();
     },
 
     beforeUnmount() {
-        this.stopPolling();
+        this.closeEventSource();
     },
 
     methods: {
-        async getCurrentUser() {
+        async fetchUserIp() {
             try {
-                const response = await axios.get('/api/user');
-                this.currentUserId = response.data.id;
+                const response = await axios.get('/api/user-info');
+                this.userIp = response.data.ip;
+                this.deviceInfo = response.data.device;
+                console.log('Device Info:', response.data);
             } catch (error) {
-                console.error('Failed to get current user:', error);
+                console.error('Failed to fetch user info:', error);
+                this.userIp = 'Unknown';
+            }
+        },
+
+        promptForUsername() {
+            const savedUsername = localStorage.getItem('chatUsername');
+            if (savedUsername) {
+                this.username = savedUsername;
+                this.showUsernamePrompt = false;
+            } else {
+                const name = prompt('Enter your username:');
+                if (name && name.trim()) {
+                    this.username = name.trim();
+                    localStorage.setItem('chatUsername', this.username);
+                    this.showUsernamePrompt = false;
+                } else {
+                    this.username = 'Anonymous_' + Math.random().toString(36).substring(7);
+                    this.showUsernamePrompt = false;
+                }
             }
         },
 
@@ -229,11 +261,11 @@ export default {
         },
 
         async selectRoom(room) {
+            this.closeEventSource();
             this.currentRoom = room;
             this.messages = [];
-            this.lastMessageId = null;
             await this.loadMessages();
-            this.startPolling();
+            this.connectToStream();
             this.scrollToBottom();
         },
 
@@ -243,26 +275,25 @@ export default {
             try {
                 const response = await axios.get(`/api/chat-rooms/${this.currentRoom.id}/messages`);
                 this.messages = response.data;
-                if (this.messages.length > 0) {
-                    this.lastMessageId = this.messages[this.messages.length - 1].id;
-                }
             } catch (error) {
                 console.error('Failed to load messages:', error);
             }
         },
 
         async sendMessage() {
-            if (!this.newMessage.trim() || this.sending) return;
+            if (!this.newMessage.trim() || this.sending || !this.username) return;
 
             this.sending = true;
             try {
-                const response = await axios.post(
+                await axios.post(
                     `/api/chat-rooms/${this.currentRoom.id}/messages`,
-                    { content: this.newMessage }
+                    { 
+                        content: this.newMessage,
+                        username: this.username
+                    }
                 );
                 
                 this.newMessage = '';
-                this.scrollToBottom();
             } catch (error) {
                 console.error('Failed to send message:', error);
                 alert(error.response?.data?.message || 'Failed to send message');
@@ -291,9 +322,10 @@ export default {
 
         async joinRoom() {
             try {
-                await axios.post(`/api/chat-rooms/${this.currentRoom.id}/join`);
+                await axios.post(`/api/chat-rooms/${this.currentRoom.id}/join`, {
+                    username: this.username
+                });
                 await this.loadMessages();
-                this.startPolling();
             } catch (error) {
                 console.error('Failed to join room:', error);
                 alert('Failed to join room');
@@ -304,42 +336,52 @@ export default {
             try {
                 await axios.post(`/api/chat-rooms/${this.currentRoom.id}/leave`);
                 this.messages = [];
-                this.stopPolling();
+                this.closeEventSource();
             } catch (error) {
                 console.error('Failed to leave room:', error);
             }
         },
 
-        startPolling() {
-            this.stopPolling();
-            this.pollInterval = setInterval(() => {
-                this.pollNewMessages();
-            }, 2000); // Poll every 2 seconds
-        },
+        connectToStream() {
+            if (!this.currentRoom) return;
 
-        stopPolling() {
-            if (this.pollInterval) {
-                clearInterval(this.pollInterval);
-                this.pollInterval = null;
-            }
-        },
+            // Close existing connection
+            this.closeEventSource();
 
-        async pollNewMessages() {
-            if (!this.currentRoom || !this.lastMessageId) return;
+            // Create new EventSource connection to ZMQ stream via SSE
+            this.eventSource = new EventSource(`/api/chat-rooms/${this.currentRoom.id}/stream`);
 
-            try {
-                const response = await axios.get(
-                    `/api/chat-rooms/${this.currentRoom.id}/messages/poll`,
-                    { params: { after: this.lastMessageId } }
-                );
-
-                if (response.data.length > 0) {
-                    this.messages.push(...response.data);
-                    this.lastMessageId = this.messages[this.messages.length - 1].id;
-                    this.$nextTick(() => this.scrollToBottom());
+            this.eventSource.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    
+                    // Check if message already exists (avoid duplicates)
+                    const exists = this.messages.some(m => m.id === message.id);
+                    if (!exists) {
+                        this.messages.push(message);
+                        this.$nextTick(() => this.scrollToBottom());
+                    }
+                } catch (error) {
+                    console.error('Failed to parse message:', error);
                 }
-            } catch (error) {
-                console.error('Polling failed:', error);
+            };
+
+            this.eventSource.onerror = (error) => {
+                console.error('EventSource error:', error);
+                // Reconnect after 3 seconds
+                this.closeEventSource();
+                setTimeout(() => {
+                    if (this.currentRoom) {
+                        this.connectToStream();
+                    }
+                }, 3000);
+            };
+        },
+
+        closeEventSource() {
+            if (this.eventSource) {
+                this.eventSource.close();
+                this.eventSource = null;
             }
         },
 

@@ -6,7 +6,6 @@ use App\Models\ChatRoom;
 use App\Models\Message;
 use App\Services\ZmqPublisher;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 
 class MessageController extends Controller
@@ -20,8 +19,6 @@ class MessageController extends Controller
      */
     public function index(Request $request, ChatRoom $chatRoom)
     {
-        Gate::authorize('view', $chatRoom);
-
         $validated = $request->validate([
             'limit' => 'sometimes|integer|min:1|max:100',
             'before' => 'sometimes|integer|exists:messages,id',
@@ -44,15 +41,10 @@ class MessageController extends Controller
         return response()->json($messages);
     }
 
-    /**
-     * Store a new message.
-     */
     public function store(Request $request, ChatRoom $chatRoom)
     {
-        Gate::authorize('sendMessage', $chatRoom);
-
-        // Rate limiting: 10 messages per minute per user per room
-        $key = 'message:' . auth()->id() . ':' . $chatRoom->id;
+        // Rate limiting: 10 messages per minute per IP per room
+        $key = 'message:' . $request->ip() . ':' . $chatRoom->id;
         
         if (RateLimiter::tooManyAttempts($key, 10)) {
             $seconds = RateLimiter::availableIn($key);
@@ -63,17 +55,17 @@ class MessageController extends Controller
 
         $validated = $request->validate([
             'content' => 'required|string|max:5000',
+            'username' => 'required|string|max:50',
         ]);
 
         $message = Message::create([
             'chat_room_id' => $chatRoom->id,
-            'user_id' => auth()->id(),
+            'user_id' => null, // Anonymous user
             'content' => $validated['content'],
+            'username' => $validated['username'],
         ]);
 
         RateLimiter::hit($key, 60);
-
-        $message->load('user:id,name');
 
         // Publish to ZeroMQ
         $this->zmqPublisher->publishMessage($chatRoom->id, $message);
@@ -86,8 +78,6 @@ class MessageController extends Controller
      */
     public function poll(Request $request, ChatRoom $chatRoom)
     {
-        Gate::authorize('view', $chatRoom);
-
         $validated = $request->validate([
             'after' => 'sometimes|integer|exists:messages,id',
             'limit' => 'sometimes|integer|min:1|max:100',

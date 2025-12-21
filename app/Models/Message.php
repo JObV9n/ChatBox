@@ -14,6 +14,7 @@ class Message extends Model
         'chat_room_id',
         'user_id',
         'content',
+        'username',
     ];
 
     /**
@@ -41,7 +42,7 @@ class Message extends Model
             'id' => $this->id,
             'chat_room_id' => $this->chat_room_id,
             'user_id' => $this->user_id,
-            'user_name' => $this->user->name,
+            'username' => $this->username ?? $this->user?->name ?? 'Anonymous',
             'content' => $this->content,
             'created_at' => $this->created_at->toISOString(),
         ];

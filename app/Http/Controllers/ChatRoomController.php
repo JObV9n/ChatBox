@@ -4,23 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\ChatRoom;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 
 class ChatRoomController extends Controller
 {
-    /**
-     * Display a listing of the chat rooms.
-     */
+    
     public function index()
     {
-        $user = auth()->user();
-        
-        // Get public rooms and private rooms the user is a member of
+        // Get all public rooms
         $chatRooms = ChatRoom::where('is_private', false)
-            ->orWhereHas('users', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-            ->with('creator:id,name')
             ->withCount('users')
             ->latest()
             ->get();
@@ -28,9 +19,6 @@ class ChatRoomController extends Controller
         return response()->json($chatRooms);
     }
 
-    /**
-     * Store a newly created chat room.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -41,13 +29,10 @@ class ChatRoomController extends Controller
         $chatRoom = ChatRoom::create([
             'name' => $validated['name'],
             'is_private' => $validated['is_private'] ?? false,
-            'created_by' => auth()->id(),
+            'created_by' => null, // Anonymous
         ]);
 
-        // Automatically add creator to the room
-        $chatRoom->users()->attach(auth()->id());
-
-        return response()->json($chatRoom->load('creator:id,name'), 201);
+        return response()->json($chatRoom, 201);
     }
 
     /**
@@ -55,11 +40,7 @@ class ChatRoomController extends Controller
      */
     public function show(ChatRoom $chatRoom)
     {
-        Gate::authorize('view', $chatRoom);
-
-        return response()->json(
-            $chatRoom->load(['creator:id,name', 'users:id,name'])
-        );
+        return response()->json($chatRoom->loadCount('users'));
     }
 
     /**
@@ -67,8 +48,6 @@ class ChatRoomController extends Controller
      */
     public function update(Request $request, ChatRoom $chatRoom)
     {
-        Gate::authorize('update', $chatRoom);
-
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255',
             'is_private' => 'sometimes|boolean',
@@ -84,8 +63,6 @@ class ChatRoomController extends Controller
      */
     public function destroy(ChatRoom $chatRoom)
     {
-        Gate::authorize('delete', $chatRoom);
-
         $chatRoom->delete();
 
         return response()->json(null, 204);
@@ -94,17 +71,18 @@ class ChatRoomController extends Controller
     /**
      * Join a chat room.
      */
-    public function join(ChatRoom $chatRoom)
+    public function join(Request $request, ChatRoom $chatRoom)
     {
-        Gate::authorize('join', $chatRoom);
+        $validated = $request->validate([
+            'username' => 'required|string|max:50',
+        ]);
 
-        $user = auth()->user();
-
-        if (!$chatRoom->hasMember($user)) {
-            $chatRoom->users()->attach($user->id);
-        }
-
-        return response()->json(['message' => 'Joined successfully']);
+        // For anonymous users, just return success
+        // In a real implementation, you might want to track this in session/cache
+        return response()->json([
+            'message' => 'Joined successfully',
+            'room' => $chatRoom,
+        ]);
     }
 
     /**
@@ -112,10 +90,6 @@ class ChatRoomController extends Controller
      */
     public function leave(ChatRoom $chatRoom)
     {
-        $user = auth()->user();
-        
-        $chatRoom->users()->detach($user->id);
-
         return response()->json(['message' => 'Left successfully']);
     }
 
@@ -124,12 +98,9 @@ class ChatRoomController extends Controller
      */
     public function onlineUsers(ChatRoom $chatRoom)
     {
-        Gate::authorize('view', $chatRoom);
-
-        $users = $chatRoom->users()
-            ->select('users.id', 'users.name')
-            ->get();
-
-        return response()->json($users);
+        return response()->json([
+            'count' => $chatRoom->users()->count(),
+            'users' => []
+        ]);
     }
 }
